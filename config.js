@@ -4,6 +4,7 @@
 
 var config = {
   application: {
+    name: 'DSS',
     host: 'localhost',
     port: 3003
   },
