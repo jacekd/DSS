@@ -28,14 +28,18 @@ var db = exports.db = new Db({
   database_password: config.database.databasePassword
 });
 
-db.open(function (err) {
-  if (err) throw err;
-    console.log(app.get('name') + ' database: connected OK');
+db.open(function (error, results) {
+  if (error) {
+    db.close();
+    console.log(error);
+    return;
+  }
+  console.log(app.get('name') + ' database: connected OK with sessionId: ' + results.sessionId);
 });
 
 
 // routes
-require('./routes/dss')(app);
+require('./routes/dss')(app, db);
 
 // start server
 http.createServer(app).listen(app.get('port'), function () {
