@@ -15,7 +15,7 @@ app.use(express.methodOverride());
 app.use(app.router);
 
 // Database config
-var db = exports.db = new Db({
+var db = new Db({
   //Server
   server_host: config.database.host,
   server_port: config.database.port,
@@ -28,14 +28,14 @@ var db = exports.db = new Db({
   database_password: config.database.databasePassword
 });
 
-db.open(function (error, results) {
-  if (error) {
-    db.close();
-    console.log(error);
-    return;
-  }
-  console.log(app.get('name') + ' database: connected OK with sessionId: ' + results.sessionId);
-});
+exports.db = db.open()
+    .then(function () {
+      console.log(app.get('name') + ' database: connected OK');
+    })
+    .error(function (error) {
+      db.close();
+      console.log(error);
+    });
 
 
 // routes
