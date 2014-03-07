@@ -30,27 +30,12 @@ var db = exports.db = new Db({
 
 db.open(function (err) {
   if (err) throw err;
-})
-    .then(function(results) {
-      //Details
-      console.log("Database '" + db.databaseName + "' has " + db.clusters.length + " clusters");
+    console.log(app.get('name') + ' database: connected OK');
+});
 
-      //SQL Statement
-      var sql  = 'SELECT FROM OUser';
-      var opts = {};
 
-      //Queries
-      db.query(sql, opts)
-          .then(function(results) {
-            console.log(results);
-          })
-          .error(function(error) {
-            console.log(error);
-          });
-    })
-    .error(function(error) {
-      console.log(error);
-    });
+// routes
+require('./routes/dss')(app);
 
 // start server
 http.createServer(app).listen(app.get('port'), function () {
