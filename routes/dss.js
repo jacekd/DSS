@@ -2,27 +2,20 @@
 var _ = require('underscore');
 
 var DSSRoute = function (app, db) {
-    app.get('/resources', function (req, res) {
 
-        db.query('SELECT FROM Resources')
-            .then(function (results) {
-                return res.json(200, results);
-            })
-            .error(function (error) {
-                return res.json(500, error);
-            });
-    });
+    app.get('/query/:collection', function (req, res) {
+        var columns = req.query.columns || "";
+        var collection = req.params.collection;
 
-    app.get('/query', function (req, res) {
-
-        db.query(req.query.query.toString())
-            .then(function (results) {
-                if (_.isEmpty(results)) return res.json(404, '');
-                return res.json(200, results);
-            })
-            .error(function (error) {
-                return res.json(404, error);
-            });
+        if (!_.isEmpty(collection)) {
+            db.query("SELECT " + columns + " FROM " + collection)
+                .then(function (results) {
+                    return (_.isEmpty(results)) ? res.json(404, '') : res.json(200, results);
+                })
+                .error(function (error) {
+                   return res.json(500, error);
+                });
+        }
     });
 };
 
