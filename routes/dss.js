@@ -6,9 +6,10 @@ var DSSRoute = function (app, db) {
 
     app.get('/query/:collection', function (req, res) {
         var columns = req.query.columns || "";
-        var conditions = req.query.conditions || "";
-        var collection = req.params.collection;
-        var query = "SELECT " + columns + " FROM " + collection;
+            conditions = req.query.conditions || "",
+            collection = req.params.collection,
+            query = "SELECT " + columns + " FROM " + collection;
+
 
         if (!_.isEmpty(conditions)) query = query + common.compileConditions(conditions);
 
