@@ -6,3 +6,7 @@ exports.parseXML = function (xmlString) {
        return result;
     });
 };
+
+exports.translateDefinition = function (definitionString) {
+
+};
