@@ -37,7 +37,6 @@ exports.db = db.open()
         console.log(error);
     });
 
-
 // routes
 require('./routes/dss')(app, db);
 require('./routes/wsdl')(app, db);
