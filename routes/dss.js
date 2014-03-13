@@ -1,6 +1,6 @@
 // DSS tool routes
 var _ = require('underscore'),
-    common = require('./common');
+    queryInterface = require('./../interfaces/queryInterface');
 
 var DSSRoute = function (app, db) {
 
@@ -10,7 +10,7 @@ var DSSRoute = function (app, db) {
         var collection = req.params.collection;
         var query = "SELECT " + columns + " FROM " + collection;
 
-        if (!_.isEmpty(conditions)) query = query + common.compileConditions(conditions);
+        if (!_.isEmpty(conditions)) query = query + queryInterface.compileConditions(conditions);
 
         if (!_.isEmpty(collection)) {
             db.query(query)

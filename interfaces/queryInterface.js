@@ -2,7 +2,7 @@ var _ = require('underscore');
 
 function checkAndFormatCondition (string) {
     return (typeof string == "number" || // value is a number
-        string.slice(0,1) == "(" && string.slice(-1) == ")" || // string wrapped in ()
+        string.slice(0,1) == "(" && string.slice(-1) == ")" || // string wrapped in (...)
         string.substring(string.indexOf(")")-1, string.indexOf(")")) == "(") ? // string contains ()
          string : "\"" + string + "\"";
 }
