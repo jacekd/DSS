@@ -1,9 +1,9 @@
 var _ = require('underscore');
 
 function checkAndFormatCondition (string) {
-    return (typeof string == "number" ||
-        string.slice(0,1) == "(" && string.slice(-1) == ")" ||
-        string.substring(string.indexOf(")")-1, string.indexOf(")")) == "(") ?
+    return (typeof string == "number" || // value is a number
+        string.slice(0,1) == "(" && string.slice(-1) == ")" || // string wrapped in ()
+        string.substring(string.indexOf(")")-1, string.indexOf(")")) == "(") ? // string contains ()
          string : "\"" + string + "\"";
 }
 
@@ -32,6 +32,31 @@ exports.compileConditions = function (json) {
                             + checkAndFormatCondition(value.value);
                     }
                 });
+                break;
+            case 'SKIP':
+            case 'LIMIT':
+                if (typeof value == "number") {
+                    conditions = conditions
+                        + (key == 'SKIP') ? "SKIP " : "LIMIT "
+                        + value;
+                }
+                break;
+            case 'GROUPBY':
+                conditions = conditions
+                    + "GROUP BY "
+                    + value;
+                break;
+            case 'ORDERBY':
+                var projections = "";
+                _.each(value, function (valueProjection) {
+                    projections = projections
+                        + " "
+                        + valueProjection
+                        + (_.last(value) != valueProjection) ? ", " : "";
+                });
+                conditions = conditions
+                    + "GROUP BY "
+                    + projections;
                 break;
         }
     });
