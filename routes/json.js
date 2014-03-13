@@ -1,0 +1,1 @@
+var jsonInterface = require('./../interfaces/jsonInterface');
