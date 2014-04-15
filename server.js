@@ -40,7 +40,7 @@ exports.db = db.open()
 // routes
 require('./routes/dss')(app, db);
 require('./routes/wsdl')(app, db);
-require('./routes/json')(app, db);
+//require('./routes/json')(app, db);
 
 // start server
 http.createServer(app).listen(app.get('port'), function () {
