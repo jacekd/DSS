@@ -1,8 +1,7 @@
 var express = require('express'),
     config = require('./config'),
     http = require('http'),
-    Orientdb = require('node-orientdb');
-Db = Orientdb.GraphDb;
+    Oriento =  require('oriento'); // database driver
 app = exports.app =  express();
 
 // environment setup
@@ -15,27 +14,14 @@ app.use(express.methodOverride());
 app.use(app.router);
 
 // Database config
-var db = new Db({
-    //Server
-    server_host: config.database.host,
-    server_port: config.database.port,
-    server_username: config.database.serverUsername,
-    server_password: config.database.serverPassword,
-
-    //Database
-    database_name: config.database.databaseName,
-    database_username: config.database.databaseUser,
-    database_password: config.database.databasePassword
+var server = Oriento({
+    host: config.database.host,
+    port: config.database.port,
+    username: config.database.databaseUser,
+    password: config.database.databasePassword
 });
 
-exports.db = db.open()
-    .then(function () {
-        console.log(app.get('name') + ' database: connected OK');
-    })
-    .error(function (error) {
-        db.close();
-        console.log(error);
-    });
+var db = exports.db = server.use(config.database.databaseName);
 
 // routes
 require('./routes/dss')(app, db);
