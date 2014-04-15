@@ -46,6 +46,3 @@ for (var i = 0; i < pool; i++) {
     });
     offset += 10;
 }
-
-
-
