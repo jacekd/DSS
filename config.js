@@ -16,6 +16,15 @@ var config = {
     databaseName: 'dss',
     databaseUser: 'root',
     databasePassword: '29246DDD3693A2CCA444B3BACC05F04301C8DCE9237F7C892B927B478BD76F12'
+  },
+  worker: {
+      run: {
+          day: [1,2,4],
+          hour: ['12:34:00']
+      },
+      scanServices: [
+          'cloudHarmony'
+      ]
   }
 };
 

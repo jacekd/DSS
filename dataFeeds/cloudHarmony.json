@@ -1,0 +1,23 @@
+{
+    "feed": "cloudHarmony",
+    "url": "http://cloudharmony.com/ws/getClouds",
+    "urlParams": [
+        "ws-offset"
+    ],
+    "pool": 12, // definition of a pool rerun amount
+    "offset": 0, // start offset of a pool rerun
+    "schema": {
+        "serviceId": "id",
+        "name": "name",
+        "website": "website",
+        "description": "description",
+        "hasContentDelivery": "hasContentDelivery",
+        "hasDatabase": "hasDatabase",
+        "hasDns": "hasDns",
+        "hasMessaging": "hasMessaging",
+        "hasPlatform": "hasPlatform",
+        "hasServers": "hasServers",
+        "hasStorage": "hasStorage",
+        "hasWindows": "hasWindows"
+    }
+}
