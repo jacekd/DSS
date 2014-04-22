@@ -10,6 +10,7 @@ var Oriento = require('oriento'),
     config = require('./config'),
     fs = require('fs'),
     path = require('path'),
+    _ = require('underscore'),
     request = require('request');
 
 // Connect to DB
@@ -22,11 +23,14 @@ var server = Oriento({
 
 var db = server.use(config.database.databaseName);
 
+
+/*
+METHODS
+ */
 // Read files in the directory
 function readDataFeeds (directory) {
     var list = fs.readdirSync(directory),
         listFiltered = [];
-
     for (var i in list) {
         var filePath = dir + "/" + list[i];
         if (!list.hasOwnProperty(i)) continue;
@@ -34,6 +38,56 @@ function readDataFeeds (directory) {
             listFiltered.push(list[i]);
         }
     }
-
     return listFiltered;
 }
+
+// Get data from the url
+function getData (url, urlParams, pool, offset) {
+    pool = pool || 1;
+    offset = offset || 0;
+
+    // construct url
+    if (!_.isEmpty(urlParams.offset)) {
+        url = url + "&" + urlParams.offset + "=" + offset;
+    }
+
+    if (!_.isEmpty(urlParams.other)) {
+        url = url + "&" + urlParams.other;
+    }
+
+    for (var i = 0; i < pool; i++) {
+        request(url, function (error, res, body) {
+           if (!error && res.statusCode == 200)  {
+               return JSON.parse(body);
+           }
+        });
+        offset += 10;
+    }
+    return false;
+}
+
+function insertCloudService (data, schema) {
+
+    // prepare the data
+    var dataScheme = {};
+
+    Object.keys(schema).forEach(function (key, value) {
+       var dataValue = data[value];
+       dataScheme.push(key, dataValue);
+    });
+
+    // Insert formatted data
+    // TODO: check if entry exists
+    db.insert().into('CloudService').set(dataScheme).one()
+        .then(function () {
+           return true;
+        })
+        .error(function () {
+            return false;
+        });
+}
+
+/*
+WORKER
+ */
+var servicesFeed = readDataFeeds('dataFeeds');
