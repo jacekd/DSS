@@ -95,20 +95,31 @@ function insertCloudService (data, schema) {
         });
 }
 
+function runServicesUpdate () {
+    var serviceFeeds = readDataFeeds('dataFeeds');
+    serviceFeeds.forEach(function (serviceFeed) {
+        var fileData = readFileJSON(serviceFeed);
+        var serviceData = false;
+        if (fileData) serviceData = getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
+        if (serviceData) insertCloudService(serviceData, fileData.schema);
+    });
+}
+
 /*
 WORKER
  */
-var serviceFeeds = readDataFeeds('dataFeeds');
-
-serviceFeeds.forEach(function (serviceFeed) {
-    var fileData = readFileJSON(serviceFeed);
-
-    var serviceData = false;
-    if (fileData) {
-        serviceData = getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
+var isNotRunning = true;
+setInterval(function () {
+    console.log(config.application.name + ': starting worker');
+    var date = new Date();
+    if (_.contains(config.worker.run.days, date.getUTCDate())
+        && _.contains(config.worker.run.hour, date.getHours())
+        && _.contains(config.worker.run.minutes, date.getMinutes())
+        && isNotRunning
+        ) {
+        isNotRunning = false;
+        async.parallel(runServicesUpdate(), function () {
+            isNotRunning = true;
+        });
     }
-
-    if (serviceData) {
-       insertCloudService(serviceData, fileData.schema);
-    }
-});
+}, 60 * 1000); // every 1 minute

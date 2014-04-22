@@ -19,8 +19,9 @@ var config = {
   },
   worker: {
       run: {
-          day: [1,2,4],
-          hour: ['12:34:00']
+          days: [1,22,4],
+          hour: [12],
+          minutes: [12]
       },
       scanServices: [
           'cloudHarmony'
