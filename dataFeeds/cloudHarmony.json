@@ -1,0 +1,24 @@
+{
+    "feed": "cloudHarmony",
+    "url": "http://cloudharmony.com/ws/getClouds",
+    "urlParams": {
+        "offset": "ws-offset",
+        "other": ""
+    },
+    "pool": 12,
+    "offset": 0,
+    "schema": {
+        "serviceId": "id",
+        "name": "name",
+        "website": "website",
+        "description": "description",
+        "hasContentDelivery": "hasContentDelivery",
+        "hasDatabase": "hasDatabase",
+        "hasDns": "hasDns",
+        "hasMessaging": "hasMessaging",
+        "hasPlatform": "hasPlatform",
+        "hasServers": "hasServers",
+        "hasStorage": "hasStorage",
+        "hasWindows": "hasWindows"
+    }
+}
