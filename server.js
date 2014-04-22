@@ -2,7 +2,7 @@ var express = require('express'),
     config = require('./config'),
     http = require('http'),
     Oriento =  require('oriento'); // database driver
-app = exports.app =  express();
+var app = exports.app =  express();
 
 // environment setup
 app.set('port', config.application.port || 3000);
