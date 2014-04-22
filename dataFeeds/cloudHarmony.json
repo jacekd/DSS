@@ -5,8 +5,8 @@
         "offset": "ws-offset",
         "other": ""
     },
-    "pool": 12, // definition of a pool rerun amount
-    "offset": 0, // start offset of a pool rerun
+    "pool": 12,
+    "offset": 0,
     "schema": {
         "serviceId": "id",
         "name": "name",

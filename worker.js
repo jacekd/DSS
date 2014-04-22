@@ -32,13 +32,21 @@ function readDataFeeds (directory) {
     var list = fs.readdirSync(directory),
         listFiltered = [];
     for (var i in list) {
-        var filePath = dir + "/" + list[i];
+        var filePath = directory + "/" + list[i];
         if (!list.hasOwnProperty(i)) continue;
         if (!fs.statSync(filePath).isDirectory() && path.extname(filePath) == ".json")  {
-            listFiltered.push(list[i]);
+            listFiltered.push(filePath);
         }
     }
     return listFiltered;
+}
+
+// Read JSON file content
+function readFileJSON (file) {
+    fs.readFile(file, 'utf8', function (error, data) {
+        if (error) return false;
+        return JSON.parse(data);
+    });
 }
 
 // Get data from the url
@@ -90,4 +98,17 @@ function insertCloudService (data, schema) {
 /*
 WORKER
  */
-var servicesFeed = readDataFeeds('dataFeeds');
+var serviceFeeds = readDataFeeds('dataFeeds');
+
+serviceFeeds.forEach(function (serviceFeed) {
+    var fileData = readFileJSON(serviceFeed);
+
+    var serviceData = false;
+    if (fileData) {
+        serviceData = getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
+    }
+
+    if (serviceData) {
+       insertCloudService(serviceData, fileData.schema);
+    }
+});
