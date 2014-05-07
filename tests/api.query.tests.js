@@ -1,18 +1,18 @@
-var should = require('chai').should(),
-    server = require('../server'),
-    app = server.app,
-    http = require('http'),
-    request = require('supertest');
-    request = request('http://localhost:3003');
+var request = require('supertest'),
+    should = require('chai').should(),
+    app = require('../server').app;
 
 describe('API tests', function () {
-    describe('query tests', function () {
-        it('should respond to simple query', function () {
-            request.get('/query/cloudservices')
-                .expect(200)
-                .end(function (err, res) {
+   describe('data queries', function () {
+       it('should run basic query', function (done) {
+           request(app)
+               .get('/query/cloudservice')
+               .expect(200)
+               .end(function (err, res) {
                    if (err) throw err;
-                });
-        });
-    });
+                   res.body.should.not.be.empty;
+                   done();
+               });
+       });
+   });
 });
