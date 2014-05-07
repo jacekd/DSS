@@ -11,9 +11,11 @@
   },
   "devDependencies": {
     "request": "~2.34.0",
-    "mocha": "~1.18.2"
+    "mocha": "~1.18.2",
+    "chai": "~1.9.1",
+    "supertest": "~0.12.0"
   },
   "scripts": {
-      "test": "mocha -u bdd ./tests/*"
+    "test": "mocha -u bdd ./tests/*"
   }
 }
