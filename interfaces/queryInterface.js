@@ -10,7 +10,8 @@ function checkAndFormatCondition (string) {
 exports.compileConditions = function (json) {
     var conditions = "",
         i = 0;
-    _.each(JSON.parse(json), function (value, key) {
+    json = (typeof json == "string") ? JSON.parse(json) : json;
+    _.each(json, function (value, key) {
         switch (key) {
             case 'WHERE':
                 _.each(value, function (value, key) {
@@ -35,7 +36,8 @@ exports.compileConditions = function (json) {
                 break;
             case 'SKIP':
             case 'LIMIT':
-                if (typeof value == "number") {
+                if (typeof value != "number") value = Number(value);
+                if (value != "NaN") {
                     conditions = conditions
                         + (key == 'SKIP') ? "SKIP " : "LIMIT "
                         + value;

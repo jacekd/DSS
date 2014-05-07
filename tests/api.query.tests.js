@@ -16,14 +16,45 @@ describe('API tests', function () {
        });
 
        it('should be able to run the query with "with"', function (done) {
+           var conditions = {
+               conditions: {
+                   "WHERE": {
+                       "category": {
+                           "operator": "=",
+                           "value": "Location"
+                       }
+                   }
+               }
+           };
+
            request(app)
                .get('/query/assets')
+               .query(conditions)
                .expect(200)
                .end(function (err, res) {
                   if (err) throw err;
                   res.body.should.not.be.empty;
+                  res.body[0].should.have.property('category');
+                  res.body[0].category.should.equal('Location');
                   done();
                });
+       });
+
+       it('should limit the result to 1', function (done) {
+          var conditions = {
+            conditions: {
+                "LIMIT": 1
+            }
+          };
+
+          request(app)
+              .get('/query/cloudservice')
+              .query(conditions)
+              .end(function (err, res) {
+                 if (err) throw err;
+                 res.body.should.have.length(1);
+                  done();
+              });
        });
    });
 });
