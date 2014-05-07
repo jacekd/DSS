@@ -1,6 +1,7 @@
 /**
  Main config file for the backend
 **/
+"use strict";
 
 var config = {
   application: {

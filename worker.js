@@ -86,13 +86,41 @@ function insertCloudService (data, schema) {
 
     // Insert formatted data
     // TODO: check if entry exists
-    db.insert().into('CloudService').set(dataScheme).one()
-        .then(function () {
-           return true;
-        })
-        .error(function () {
-            return false;
-        });
+    var recordcheck;
+    db.select()
+        .from('CloudService')
+        .where({ id: dataScheme.id })
+        .one()
+        .then(function(record) {
+       recordcheck = record;
+    });
+    if (_.isEmpty(recordcheck)) {
+        db.insert()
+            .into('CloudService')
+            .set(dataScheme)
+            .one()
+            .then(function () {
+                return true;
+            })
+            .error(function () {
+                return false;
+            });
+        return false;
+    } else {
+        var recordId = dataScheme.id;
+        delete dataScheme.id;
+        db.update('CloudService')
+            .set(dataScheme)
+            .where({ id: recordId })
+            .scalar()
+            .then(function () {
+                return true;
+            })
+            .error(function () {
+               return false;
+            });
+        return false;
+    }
 }
 
 function runServicesUpdate () {
