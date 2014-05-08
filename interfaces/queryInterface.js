@@ -10,7 +10,8 @@ function checkAndFormatCondition (string) {
 exports.compileConditions = function (json) {
     var conditions = "",
         i = 0;
-    _.each(JSON.parse(json), function (value, key) {
+    json = (typeof json == "string") ? JSON.parse(json) : json;
+    _.each(json, function (value, key) {
         switch (key) {
             case 'WHERE':
                 _.each(value, function (value, key) {
@@ -35,15 +36,17 @@ exports.compileConditions = function (json) {
                 break;
             case 'SKIP':
             case 'LIMIT':
-                if (typeof value == "number") {
+                var which = (key == 'SKIP') ? " SKIP " : " LIMIT ";
+                if (typeof value != "number") value = Number(value);
+                if (value != "NaN") {
                     conditions = conditions
-                        + (key == 'SKIP') ? "SKIP " : "LIMIT "
+                        + which
                         + value;
                 }
                 break;
             case 'GROUPBY':
                 conditions = conditions
-                    + "GROUP BY "
+                    + " GROUP BY "
                     + value;
                 break;
             case 'ORDERBY':
@@ -55,7 +58,7 @@ exports.compileConditions = function (json) {
                         + (_.last(value) != valueProjection) ? ", " : "";
                 });
                 conditions = conditions
-                    + "GROUP BY "
+                    + " ORDER BY "
                     + projections;
                 break;
         }

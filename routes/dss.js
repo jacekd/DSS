@@ -9,7 +9,6 @@ var DSSRoute = function (app, db) {
         var conditions = req.query.conditions || "";
         var collection = req.params.collection;
 
-        // TODO: change that for the new driver
         var query = "SELECT " + columns + " FROM " + collection;
 
         if (!_.isEmpty(conditions)) query = query + queryInterface.compileConditions(conditions);

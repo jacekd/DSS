@@ -24,6 +24,7 @@ var config = {
           hour: [12],
           minutes: [12]
       },
+      interval: 60 * 1000, // every 1 minute
       scanServices: [
           'cloudHarmony'
       ]
