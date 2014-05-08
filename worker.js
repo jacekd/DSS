@@ -150,4 +150,4 @@ setInterval(function () {
             isNotRunning = true;
         });
     }
-}, 60 * 1000); // every 1 minute
+}, config.worker.interval);

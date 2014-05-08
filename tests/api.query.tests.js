@@ -16,7 +16,7 @@ describe('API tests', function () {
                });
        });
 
-       it('should be able to run the query with "with"', function (done) {
+       it('should be able to run the query with "where"', function (done) {
            conditions = {
                conditions: {
                    "WHERE": {
@@ -58,7 +58,7 @@ describe('API tests', function () {
               });
        });
 
-       it('should be able to run group by', function (done) {
+       it('should be able to run "group by"', function (done) {
           conditions = {
               conditions: {
                   "GROUPBY": "hasDatabase"
