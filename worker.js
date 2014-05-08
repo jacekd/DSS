@@ -42,30 +42,68 @@ methods.readDataFeeds = function (directory) {
     return listFiltered;
 };
 
+// Data Parser worker
+function DataParser(name) {
+    this.name = name;
+}
+
+// Read config file
+DataParser.prototype.readConfig = function (file) {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+};
+
+// Prepare URL
+DataParser.prototype.prepareUrl = function (parserData, offset) {
+    var pool = parserData.pool || 1,
+        offset = offset || parserData.offset || 0,
+        url = parserData.url;
+
+    if (!_.isEmpty(parserData.urlParams.other)) {
+        url = url + "&" + parserData.urlParams.other;
+    }
+
+    if (!_.isEmpty(parserData.urlParams.offset)) {
+        url = url + "&" + parserData.urlParams.offset + "=" + offset;
+    }
+
+    return url;
+};
+
+DataParser.prototype.fetchData = function (url, callback) {
+    request(url, function (err, res, body) {
+      if (!err && res.statusCode == 200)  {
+          if (callback && typeof callback == "function") {
+              callback(body);
+          }
+      }
+    });
+};
+
+
 // Read JSON file content
 methods.readFileJSON = function (file) {
     return JSON.parse(fs.readFileSync(file, 'utf8'));
 };
 
 // Get data from the url
-methods.getData = function (url, urlParams, pool, offset, callback) {
-    pool = pool || 1;
-    offset = offset || 0;
-    var urlParsed;
+methods.fetchData = function (dataFeedData, callback) {
+    var pool = dataFeedData.pool || 1,
+        offset = dataFeedData.offset || 0,
+        urlParsed;
 
     // construct url
-    if (!_.isEmpty(urlParams.other)) {
-        url = url + "&" + urlParams.other;
+    if (!_.isEmpty(dataFeedData.urlParams.other)) {
+        urlParsed = dataFeedData.url + "&" + dataFeedData.urlParams.other;
     }
 
     for (var i = 0; i < pool; i++) {
-        if (!_.isEmpty(urlParams.offset)) {
-            urlParsed = url + "&" + urlParams.offset + "=" + offset;
+        if (!_.isEmpty(dataFeedData.urlParams.offset)) {
+            urlParsed = url + "&" + dataFeedData.urlParams.offset + "=" + offset;
         }
-        request(url, function (error, res, body) {
+        request(urlParsed, function (error, res, body) {
            if (!error && res.statusCode == 200)  {
                if (!_.isUndefined(callback)) {
-                   callback(body);
+                   callback(body); //TODO: think about it
                }
            }
         });
