@@ -27,54 +27,54 @@ var db = server.use(config.database.databaseName);
 /*
 METHODS
  */
+var methods = {};
 // Read files in the directory
-function readDataFeeds (directory) {
+methods.readDataFeeds = function (directory) {
     var list = fs.readdirSync(directory),
         listFiltered = [];
     for (var i in list) {
         var filePath = directory + "/" + list[i];
         if (!list.hasOwnProperty(i)) continue;
         if (!fs.statSync(filePath).isDirectory() && path.extname(filePath) == ".json")  {
-            listFiltered.push(filePath);
+            listFiltered.push(path.join(__dirname, filePath));
         }
     }
     return listFiltered;
-}
+};
 
 // Read JSON file content
-function readFileJSON (file) {
-    fs.readFile(file, 'utf8', function (error, data) {
-        if (error) return false;
-        return JSON.parse(data);
-    });
-}
+methods.readFileJSON = function (file) {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+};
 
 // Get data from the url
-function getData (url, urlParams, pool, offset) {
+methods.getData = function (url, urlParams, pool, offset, callback) {
     pool = pool || 1;
     offset = offset || 0;
+    var urlParsed;
 
     // construct url
-    if (!_.isEmpty(urlParams.offset)) {
-        url = url + "&" + urlParams.offset + "=" + offset;
-    }
-
     if (!_.isEmpty(urlParams.other)) {
         url = url + "&" + urlParams.other;
     }
 
     for (var i = 0; i < pool; i++) {
+        if (!_.isEmpty(urlParams.offset)) {
+            urlParsed = url + "&" + urlParams.offset + "=" + offset;
+        }
         request(url, function (error, res, body) {
            if (!error && res.statusCode == 200)  {
-               return JSON.parse(body);
+               if (!_.isUndefined(callback)) {
+                   callback(body);
+               }
            }
         });
         offset += 10;
     }
     return false;
-}
+};
 
-function insertCloudService (data, schema) {
+methods.insertCloudService = function (data, schema) {
 
     // prepare the data
     var dataScheme = {};
@@ -121,21 +121,21 @@ function insertCloudService (data, schema) {
             });
         return false;
     }
-}
+};
 
-function runServicesUpdate () {
-    var serviceFeeds = readDataFeeds('dataFeeds');
+methods.runServicesUpdate = function () {
+    var serviceFeeds = methods.readDataFeeds('./dataFeeds');
     serviceFeeds.forEach(function (serviceFeed) {
-        var fileData = readFileJSON(serviceFeed);
+        var fileData = methods.readFileJSON(serviceFeed);
         var serviceData = false;
-        if (fileData) serviceData = getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
-        if (serviceData) insertCloudService(serviceData, fileData.schema);
+        if (fileData) serviceData = methods.getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
+        if (serviceData) methods.insertCloudService(serviceData, fileData.schema);
     });
-}
+};
 
 /*
 WORKER
- */
+*/
 var isNotRunning = true;
 setInterval(function () {
     console.log(config.application.name + ': starting worker');
@@ -146,8 +146,11 @@ setInterval(function () {
         && isNotRunning
         ) {
         isNotRunning = false;
-        async.parallel(runServicesUpdate(), function () {
+        async.parallel(methods.runServicesUpdate(), function () {
             isNotRunning = true;
         });
     }
 }, config.worker.interval);
+
+// export methods
+module.exports = methods;
