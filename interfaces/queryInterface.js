@@ -36,16 +36,17 @@ exports.compileConditions = function (json) {
                 break;
             case 'SKIP':
             case 'LIMIT':
+                var which = (key == 'SKIP') ? " SKIP " : " LIMIT ";
                 if (typeof value != "number") value = Number(value);
                 if (value != "NaN") {
                     conditions = conditions
-                        + (key == 'SKIP') ? "SKIP " : "LIMIT "
+                        + which
                         + value;
                 }
                 break;
             case 'GROUPBY':
                 conditions = conditions
-                    + "GROUP BY "
+                    + " GROUP BY "
                     + value;
                 break;
             case 'ORDERBY':
@@ -57,7 +58,7 @@ exports.compileConditions = function (json) {
                         + (_.last(value) != valueProjection) ? ", " : "";
                 });
                 conditions = conditions
-                    + "GROUP BY "
+                    + " ORDER BY "
                     + projections;
                 break;
         }

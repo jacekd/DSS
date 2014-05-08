@@ -1,6 +1,7 @@
 var request = require('supertest'),
-    should = require('chai').should(),
-    app = require('../server').app;
+    assert = require('chai').assert,
+    app = require('../server').app,
+    conditions;
 
 describe('API tests', function () {
    describe('data queries', function () {
@@ -10,13 +11,13 @@ describe('API tests', function () {
                .expect(200)
                .end(function (err, res) {
                    if (err) throw err;
-                   res.body.should.not.be.empty;
+                   assert.isNotNull(res.body);
                    done();
                });
        });
 
        it('should be able to run the query with "with"', function (done) {
-           var conditions = {
+           conditions = {
                conditions: {
                    "WHERE": {
                        "category": {
@@ -33,15 +34,15 @@ describe('API tests', function () {
                .expect(200)
                .end(function (err, res) {
                   if (err) throw err;
-                  res.body.should.not.be.empty;
-                  res.body[0].should.have.property('category');
-                  res.body[0].category.should.equal('Location');
+                  assert.isNotNull(res.body);
+                  assert.deepProperty(res.body[0], 'category');
+                  assert.deepEqual(res.body[0].category, 'Location');
                   done();
                });
        });
 
        it('should limit the result to 1', function (done) {
-          var conditions = {
+          conditions = {
             conditions: {
                 "LIMIT": 1
             }
@@ -52,9 +53,54 @@ describe('API tests', function () {
               .query(conditions)
               .end(function (err, res) {
                  if (err) throw err;
-                 res.body.should.have.length(1);
-                  done();
+                 assert.lengthOf(res.body, 1);
+                 done();
               });
+       });
+
+       it('should be able to run group by', function (done) {
+          conditions = {
+              conditions: {
+                  "GROUPBY": "hasDatabase"
+              }
+          };
+
+          var allResults;
+          request(app)
+              .get('/query/cloudservice')
+              .end(function (err, res) {
+                 if (err) throw err;
+                 allResults = res.body.length;
+              });
+
+          request(app)
+              .get('/query/cloudservice')
+              .query(conditions)
+              .end(function (err, res) {
+                 if (err) throw err;
+                 assert.deepProperty(res.body[0], "website");
+                 assert.notEqual(res.body.length, allResults);
+                 done();
+              });
+       });
+
+       it('should select only relevant columns', function (done) {
+          conditions = {
+              conditions: {
+                  "LIMIT": 1
+              },
+              columns: "name, hasDatabase"
+          };
+
+           request(app)
+               .get('/query/cloudservice')
+               .query(conditions)
+               .end(function (err, res) {
+                   if (err) throw err;
+                   assert.lengthOf(Object.keys(res.body[0]), 4);
+                   assert.notDeepProperty(res.body[0], "website");
+                   done();
+               });
        });
    });
 });
