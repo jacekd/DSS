@@ -13,7 +13,7 @@ var Oriento = require('oriento'),
     _ = require('underscore'),
     async = require('async'),
     log4js = require('log4js'),
-    request = require('request');
+    httpRequest = require('request');
 
 // Connect to DB
 var server = Oriento({
@@ -77,7 +77,7 @@ DataParser.prototype.prepareUrl = function (parserData, offset) {
 
 // fetch data
 DataParser.prototype.fetchData = function (url, callback) {
-    request(url, function (err, res, body) {
+    httpRequest.get(url, function (err, res, body) {
         if (callback && typeof callback == "function" && (!err)) {
             callback(JSON.parse(body));
         }
@@ -91,20 +91,20 @@ DataParser.prototype.insertOrUpdateCloudService = function (data, schema) {
 
     // Fill schemaFilledWithData
     Object.keys(schema).forEach(function (key, value) {
-       schemaFilledWithData.push(key, data[value]);
+       schemaFilledWithData[value] = data[key];
     });
 
     // Check if row exists
-    var recordExists;
-    db.select()
-        .from('CloudService')
-        .where({ id: schemaFilledWithData.id })
-        .one()
-        .then(function (record) {
-           recordExists = record;
-        });
-    // insert if it does not exist
-    if (_.isEmpty(recordExists)) {
+//    var recordExists = {};
+//    db.select()
+//        .from('CloudService')
+//        .where({ id: schemaFilledWithData.id })
+//        .one()
+//        .then(function (record) {
+//           recordExists[service] = record;
+//        });
+//    // insert if it does not exist
+//    if (_.isUndefined(recordExists)) {
         db.insert()
             .into('CloudService')
             .set(schemaFilledWithData)
@@ -115,48 +115,49 @@ DataParser.prototype.insertOrUpdateCloudService = function (data, schema) {
             .error(function () {
                 return false;
             });
-        return false;
-    } else {
-        // update if exist
-        var recordId = schemaFilledWithData.id;
-        delete schemaFilledWithData.id;
-        db.update('CloudService')
-            .set(schemaFilledWithData)
-            .where({ id: recordId })
-            .scalar()
-            .then(function () {
-                return true;
-            })
-            .error(function () {
-                return false;
-            });
-        return false;
-    }
+//        return false;
+//    } else {
+//        // update if exist
+//        var recordId = schemaFilledWithData.id;
+//        delete schemaFilledWithData.id;
+//        db.update('CloudService')
+//            .set(schemaFilledWithData)
+//            .where({ id: recordId })
+//            .scalar()
+//            .then(function () {
+//                return true;
+//            })
+//            .error(function () {
+//                return false;
+//            });
+//        return false;
+//    }
 };
 
 methods.runServicesUpdate = function () {
     var serviceFeeds = methods.readDataFeeds('./dataFeeds');
     serviceFeeds.forEach(function (serviceFeed) {
-        var DataParserInstance = new DataParser('serviceFeed'),
-            serviceFileData = DataParserInstance.readConfig(serviceFeed),
-            serviceData = false,
+        var serviceDataParser = new DataParser('workerProcess'),
+            serviceFileData = serviceDataParser.readConfig(serviceFeed),
             offset = 0;
 
         // loop through the pool and fill the data
         for (var c = 0; c < serviceFileData.pool; c++) {
-            var url = DataParserInstance.prepareUrl(serviceFileData, offset);
-            workerlog.info('starting parse of dataFeed: ' + DataParserInstance.feed);
-            DataParserInstance.fetchData(url, function (data) {
-               if (_.isObject(data))  {
-                    workerlog.info('writing data for: ' + DataParserInstance.feed);
-                    Object.keys(data[serviceFileData.dataObject]).forEach(function (service) {
-                       DataParserInstance.insertOrUpdateCloudService(data[serviceFileData.dataObject][service], serviceFileData.schema);
+            var url = serviceDataParser.prepareUrl(serviceFileData, offset);
+            workerlog.info('starting parse of dataFeed: ' + serviceDataParser.name);
+//            serviceDataParser.fetchData(url, function (body) {
+            httpRequest(url, function (err, res, body){
+                body = JSON.parse(body);
+               if (_.isObject(body))  {
+                    workerlog.info('writing data for: ' + serviceDataParser.name);
+                    Object.keys(body[serviceFileData.dataObject]).forEach(function (service) {
+                       serviceDataParser.insertOrUpdateCloudService(body[serviceFileData.dataObject][service], serviceFileData.schema);
                        offset += serviceFileData.offsetInterval;
                     });
                } else {
-                   workerlog.error('data for feed: ' + DataParserInstance.name + ' not fetched');
+                   workerlog.error('data for feed: ' + DataParser.name + ' not fetched');
                }
-               return false;
+//               return false;
             });
         }
     });
@@ -175,9 +176,10 @@ setInterval(function () {
         ) {
         isNotRunning = false;
         workerlog.info(config.application.name + ': worker starting');
-        async.parallel(methods.runServicesUpdate(), function () {
-            isNotRunning = true;
-        });
+//        async.parallel(methods.runServicesUpdate(), function () {
+//            isNotRunning = true;
+//        });
+        methods.runServicesUpdate();
     }
 }, config.worker.interval);
 
