@@ -20,14 +20,11 @@ var config = {
   },
   worker: {
       run: {
-          days: [1,22,4],
-          hour: [12],
-          minutes: [12]
+          days: [1,12,4],
+          hour: [11],
+          minutes: [19,20,21]
       },
-      interval: 60 * 1000, // every 1 minute
-      scanServices: [
-          'cloudHarmony'
-      ]
+      interval: 60 * 1000 // every 1 minute
   }
 };
 

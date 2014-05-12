@@ -11,6 +11,8 @@ var Oriento = require('oriento'),
     fs = require('fs'),
     path = require('path'),
     _ = require('underscore'),
+    async = require('async'),
+    log4js = require('log4js'),
     request = require('request');
 
 // Connect to DB
@@ -23,81 +25,89 @@ var server = Oriento({
 
 var db = server.use(config.database.databaseName);
 
+// logger
+log4js.loadAppender('file');
+log4js.addAppender(log4js.appenders.file('logs/worker.log'), 'worker');
+
+var workerlog = log4js.getLogger('worker');
 
 /*
 METHODS
  */
+var methods = {};
 // Read files in the directory
-function readDataFeeds (directory) {
+methods.readDataFeeds = function (directory) {
     var list = fs.readdirSync(directory),
         listFiltered = [];
     for (var i in list) {
         var filePath = directory + "/" + list[i];
         if (!list.hasOwnProperty(i)) continue;
         if (!fs.statSync(filePath).isDirectory() && path.extname(filePath) == ".json")  {
-            listFiltered.push(filePath);
+            listFiltered.push(path.join(__dirname, filePath));
         }
     }
     return listFiltered;
-}
+};
 
-// Read JSON file content
-function readFileJSON (file) {
-    fs.readFile(file, 'utf8', function (error, data) {
-        if (error) return false;
-        return JSON.parse(data);
+// Data Parser worker
+var DataParser = methods.DataParser = function (name) {
+    this.name = name;
+};
+
+// Read config file
+DataParser.prototype.readConfig = function (file) {
+    return JSON.parse(fs.readFileSync(file, 'utf8'));
+};
+
+// Prepare URL
+DataParser.prototype.prepareUrl = function (parserData, offset) {
+    var
+        url = parserData.url;
+        offset = offset || parserData.offset || 0;
+
+    if (!_.isEmpty(parserData.urlParams.other)) {
+        url = url + "&" + parserData.urlParams.other;
+    }
+
+    if (!_.isEmpty(parserData.urlParams.offset)) {
+        url = url + "&" + parserData.urlParams.offset + "=" + offset;
+    }
+    return url;
+};
+
+// fetch data
+DataParser.prototype.fetchData = function (url, callback) {
+    request(url, function (err, res, body) {
+        if (callback && typeof callback == "function" && (!err)) {
+            callback(JSON.parse(body));
+        }
     });
-}
+};
 
-// Get data from the url
-function getData (url, urlParams, pool, offset) {
-    pool = pool || 1;
-    offset = offset || 0;
+DataParser.prototype.insertOrUpdateCloudService = function (data, schema) {
 
-    // construct url
-    if (!_.isEmpty(urlParams.offset)) {
-        url = url + "&" + urlParams.offset + "=" + offset;
-    }
+    // initiate empty data object based on the schema
+    var schemaFilledWithData = {};
 
-    if (!_.isEmpty(urlParams.other)) {
-        url = url + "&" + urlParams.other;
-    }
-
-    for (var i = 0; i < pool; i++) {
-        request(url, function (error, res, body) {
-           if (!error && res.statusCode == 200)  {
-               return JSON.parse(body);
-           }
-        });
-        offset += 10;
-    }
-    return false;
-}
-
-function insertCloudService (data, schema) {
-
-    // prepare the data
-    var dataScheme = {};
-
+    // Fill schemaFilledWithData
     Object.keys(schema).forEach(function (key, value) {
-       var dataValue = data[value];
-       dataScheme.push(key, dataValue);
+       schemaFilledWithData.push(key, data[value]);
     });
 
-    // Insert formatted data
-    // TODO: check if entry exists
-    var recordcheck;
+    // Check if row exists
+    var recordExists;
     db.select()
         .from('CloudService')
-        .where({ id: dataScheme.id })
+        .where({ id: schemaFilledWithData.id })
         .one()
-        .then(function(record) {
-       recordcheck = record;
-    });
-    if (_.isEmpty(recordcheck)) {
+        .then(function (record) {
+           recordExists = record;
+        });
+    // insert if it does not exist
+    if (_.isEmpty(recordExists)) {
         db.insert()
             .into('CloudService')
-            .set(dataScheme)
+            .set(schemaFilledWithData)
             .one()
             .then(function () {
                 return true;
@@ -107,38 +117,56 @@ function insertCloudService (data, schema) {
             });
         return false;
     } else {
-        var recordId = dataScheme.id;
-        delete dataScheme.id;
+        // update if exist
+        var recordId = schemaFilledWithData.id;
+        delete schemaFilledWithData.id;
         db.update('CloudService')
-            .set(dataScheme)
+            .set(schemaFilledWithData)
             .where({ id: recordId })
             .scalar()
             .then(function () {
                 return true;
             })
             .error(function () {
-               return false;
+                return false;
             });
         return false;
     }
-}
+};
 
-function runServicesUpdate () {
-    var serviceFeeds = readDataFeeds('dataFeeds');
+methods.runServicesUpdate = function () {
+    var serviceFeeds = methods.readDataFeeds('./dataFeeds');
     serviceFeeds.forEach(function (serviceFeed) {
-        var fileData = readFileJSON(serviceFeed);
-        var serviceData = false;
-        if (fileData) serviceData = getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
-        if (serviceData) insertCloudService(serviceData, fileData.schema);
+        var DataParserInstance = new DataParser('serviceFeed'),
+            serviceFileData = DataParserInstance.readConfig(serviceFeed),
+            serviceData = false,
+            offset = 0;
+
+        // loop through the pool and fill the data
+        for (var c = 0; c < serviceFileData.pool; c++) {
+            var url = DataParserInstance.prepareUrl(serviceFileData, offset);
+            workerlog.info('starting parse of dataFeed: ' + DataParserInstance.feed);
+            DataParserInstance.fetchData(url, function (data) {
+               if (_.isObject(data))  {
+                    workerlog.info('writing data for: ' + DataParserInstance.feed);
+                    Object.keys(data[serviceFileData.dataObject]).forEach(function (service) {
+                       DataParserInstance.insertOrUpdateCloudService(data[serviceFileData.dataObject][service], serviceFileData.schema);
+                       offset += serviceFileData.offsetInterval;
+                    });
+               } else {
+                   workerlog.error('data for feed: ' + DataParserInstance.name + ' not fetched');
+               }
+               return false;
+            });
+        }
     });
-}
+};
 
 /*
 WORKER
- */
+*/
 var isNotRunning = true;
 setInterval(function () {
-    console.log(config.application.name + ': starting worker');
     var date = new Date();
     if (_.contains(config.worker.run.days, date.getUTCDate())
         && _.contains(config.worker.run.hour, date.getHours())
@@ -146,8 +174,12 @@ setInterval(function () {
         && isNotRunning
         ) {
         isNotRunning = false;
-        async.parallel(runServicesUpdate(), function () {
+        workerlog.info(config.application.name + ': worker starting');
+        async.parallel(methods.runServicesUpdate(), function () {
             isNotRunning = true;
         });
     }
 }, config.worker.interval);
+
+// export methods
+module.exports = methods;
