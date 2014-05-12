@@ -153,13 +153,13 @@ methods.runServicesUpdate = function () {
                if (_.isObject(body))  {
                     Object.keys(body[serviceFileData.dataObject]).forEach(function (service) {
                        serviceDataParser.insertOrUpdateCloudService(body[serviceFileData.dataObject][service], serviceFileData.schema);
-                       offset += serviceFileData[offsetInterval];
                     });
                } else {
                    workerlog.error('data for feed: ' + DataParser.name + ' not fetched');
                }
 //               return false;
             });
+            offset += serviceFileData.offsetInterval;
         }
     });
 };
