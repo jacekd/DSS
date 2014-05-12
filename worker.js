@@ -43,9 +43,9 @@ methods.readDataFeeds = function (directory) {
 };
 
 // Data Parser worker
-function DataParser(name) {
+var DataParser = methods.DataParser = function (name) {
     this.name = name;
-}
+};
 
 // Read config file
 DataParser.prototype.readConfig = function (file) {
@@ -55,8 +55,8 @@ DataParser.prototype.readConfig = function (file) {
 // Prepare URL
 DataParser.prototype.prepareUrl = function (parserData, offset) {
     var pool = parserData.pool || 1,
-        offset = offset || parserData.offset || 0,
         url = parserData.url;
+        offset = offset || parserData.offset || 0;
 
     if (!_.isEmpty(parserData.urlParams.other)) {
         url = url + "&" + parserData.urlParams.other;
@@ -65,24 +65,66 @@ DataParser.prototype.prepareUrl = function (parserData, offset) {
     if (!_.isEmpty(parserData.urlParams.offset)) {
         url = url + "&" + parserData.urlParams.offset + "=" + offset;
     }
-
     return url;
 };
 
+// fetch data
 DataParser.prototype.fetchData = function (url, callback) {
     request(url, function (err, res, body) {
-      if (!err && res.statusCode == 200)  {
-          if (callback && typeof callback == "function") {
-              callback(body);
-          }
-      }
+        if (callback && typeof callback == "function" && (!err)) {
+            callback(JSON.parse(body));
+        }
     });
 };
 
+DataParser.prototype.insertOrUpdateCloudService = function (data, schema) {
 
-// Read JSON file content
-methods.readFileJSON = function (file) {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    // initiate empty data object based on the schema
+    var schemaFilledWithData = {};
+
+    // Fill schemaFilledWithData
+    Object.keys(schema).forEach(function (key, value) {
+       schemaFilledWithData.push(key, data[value]);
+    });
+
+    // Check if row exists
+    var recordExists;
+    db.select()
+        .from('CloudService')
+        .where({ id: schemaFilledWithData.id })
+        .one()
+        .then(function (record) {
+           recordExists = record;
+        });
+    // insert if it does not exist
+    if (_.isEmpty(recordExists)) {
+        db.insert()
+            .into('CloudService')
+            .set(schemaFilledWithData)
+            .one()
+            .then(function () {
+                return true;
+            })
+            .error(function () {
+                return false;
+            });
+        return false;
+    } else {
+        // update if exist
+        var recordId = schemaFilledWithData.id;
+        delete schemaFilledWithData.id;
+        db.update('CloudService')
+            .set(schemaFilledWithData)
+            .where({ id: recordId })
+            .scalar()
+            .then(function () {
+                return true;
+            })
+            .error(function () {
+                return false;
+            });
+        return false;
+    }
 };
 
 // Get data from the url
@@ -112,60 +154,13 @@ methods.fetchData = function (dataFeedData, callback) {
     return false;
 };
 
-methods.insertCloudService = function (data, schema) {
-
-    // prepare the data
-    var dataScheme = {};
-
-    Object.keys(schema).forEach(function (key, value) {
-       var dataValue = data[value];
-       dataScheme.push(key, dataValue);
-    });
-
-    // Insert formatted data
-    // TODO: check if entry exists
-    var recordcheck;
-    db.select()
-        .from('CloudService')
-        .where({ id: dataScheme.id })
-        .one()
-        .then(function(record) {
-       recordcheck = record;
-    });
-    if (_.isEmpty(recordcheck)) {
-        db.insert()
-            .into('CloudService')
-            .set(dataScheme)
-            .one()
-            .then(function () {
-                return true;
-            })
-            .error(function () {
-                return false;
-            });
-        return false;
-    } else {
-        var recordId = dataScheme.id;
-        delete dataScheme.id;
-        db.update('CloudService')
-            .set(dataScheme)
-            .where({ id: recordId })
-            .scalar()
-            .then(function () {
-                return true;
-            })
-            .error(function () {
-               return false;
-            });
-        return false;
-    }
-};
-
 methods.runServicesUpdate = function () {
     var serviceFeeds = methods.readDataFeeds('./dataFeeds');
     serviceFeeds.forEach(function (serviceFeed) {
-        var fileData = methods.readFileJSON(serviceFeed);
-        var serviceData = false;
+        var DataParserInstance = new DataParser('serviceFeed'),
+            serviceFileData = DataParser.readConfig(serviceFeed),
+            serviceData = false;
+
         if (fileData) serviceData = methods.getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
         if (serviceData) methods.insertCloudService(serviceData, fileData.schema);
     });
