@@ -7,6 +7,8 @@
     },
     "pool": 12,
     "offset": 0,
+    "offsetInterval": 10,
+    "dataObject": "response",
     "schema": {
         "serviceId": "id",
         "name": "name",

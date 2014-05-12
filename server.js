@@ -1,6 +1,7 @@
 var express = require('express'),
     config = require('./config'),
     http = require('http'),
+    log4js = require('log4js'),
     Oriento =  require('oriento'), // database driver
     app = exports.app =  express();
 
@@ -22,6 +23,12 @@ var server = Oriento({
 });
 
 var db = exports.db = server.use(config.database.databaseName);
+
+// Logger settings
+log4js.loadAppender('file');
+log4js.addAppender(log4js.appenders.file('logs/application.log'), 'app');
+
+var appLog = exports.appLog = log4js.getLogger('app');
 
 // routes
 require('./routes/dss')(app, db);

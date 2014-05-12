@@ -11,6 +11,8 @@ var Oriento = require('oriento'),
     fs = require('fs'),
     path = require('path'),
     _ = require('underscore'),
+    async = require('async'),
+    log4js = require('log4js'),
     request = require('request');
 
 // Connect to DB
@@ -23,6 +25,11 @@ var server = Oriento({
 
 var db = server.use(config.database.databaseName);
 
+// logger
+log4js.loadAppender('file');
+log4js.addAppender(log4js.appenders.file('logs/worker.log'), 'worker');
+
+var workerlog = log4js.getLogger('worker');
 
 /*
 METHODS
@@ -54,7 +61,7 @@ DataParser.prototype.readConfig = function (file) {
 
 // Prepare URL
 DataParser.prototype.prepareUrl = function (parserData, offset) {
-    var pool = parserData.pool || 1,
+    var
         url = parserData.url;
         offset = offset || parserData.offset || 0;
 
@@ -127,42 +134,31 @@ DataParser.prototype.insertOrUpdateCloudService = function (data, schema) {
     }
 };
 
-// Get data from the url
-methods.fetchData = function (dataFeedData, callback) {
-    var pool = dataFeedData.pool || 1,
-        offset = dataFeedData.offset || 0,
-        urlParsed;
-
-    // construct url
-    if (!_.isEmpty(dataFeedData.urlParams.other)) {
-        urlParsed = dataFeedData.url + "&" + dataFeedData.urlParams.other;
-    }
-
-    for (var i = 0; i < pool; i++) {
-        if (!_.isEmpty(dataFeedData.urlParams.offset)) {
-            urlParsed = url + "&" + dataFeedData.urlParams.offset + "=" + offset;
-        }
-        request(urlParsed, function (error, res, body) {
-           if (!error && res.statusCode == 200)  {
-               if (!_.isUndefined(callback)) {
-                   callback(body); //TODO: think about it
-               }
-           }
-        });
-        offset += 10;
-    }
-    return false;
-};
-
 methods.runServicesUpdate = function () {
     var serviceFeeds = methods.readDataFeeds('./dataFeeds');
     serviceFeeds.forEach(function (serviceFeed) {
         var DataParserInstance = new DataParser('serviceFeed'),
-            serviceFileData = DataParser.readConfig(serviceFeed),
-            serviceData = false;
+            serviceFileData = DataParserInstance.readConfig(serviceFeed),
+            serviceData = false,
+            offset = 0;
 
-        if (fileData) serviceData = methods.getData(fileData.url, fileData.urlParams, fileData.pool, fileData.offset);
-        if (serviceData) methods.insertCloudService(serviceData, fileData.schema);
+        // loop through the pool and fill the data
+        for (var c = 0; c < serviceFileData.pool; c++) {
+            var url = DataParserInstance.prepareUrl(serviceFileData, offset);
+            workerlog.info('starting parse of dataFeed: ' + DataParserInstance.feed);
+            DataParserInstance.fetchData(url, function (data) {
+               if (_.isObject(data))  {
+                    workerlog.info('writing data for: ' + DataParserInstance.feed);
+                    Object.keys(data[serviceFileData.dataObject]).forEach(function (service) {
+                       DataParserInstance.insertOrUpdateCloudService(data[serviceFileData.dataObject][service], serviceFileData.schema);
+                       offset += serviceFileData.offsetInterval;
+                    });
+               } else {
+                   workerlog.error('data for feed: ' + DataParserInstance.name + ' not fetched');
+               }
+               return false;
+            });
+        }
     });
 };
 
@@ -171,7 +167,6 @@ WORKER
 */
 var isNotRunning = true;
 setInterval(function () {
-    console.log(config.application.name + ': starting worker');
     var date = new Date();
     if (_.contains(config.worker.run.days, date.getUTCDate())
         && _.contains(config.worker.run.hour, date.getHours())
@@ -179,6 +174,7 @@ setInterval(function () {
         && isNotRunning
         ) {
         isNotRunning = false;
+        workerlog.info(config.application.name + ': worker starting');
         async.parallel(methods.runServicesUpdate(), function () {
             isNotRunning = true;
         });
