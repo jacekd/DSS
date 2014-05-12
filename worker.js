@@ -90,48 +90,50 @@ DataParser.prototype.insertOrUpdateCloudService = function (data, schema) {
     var schemaFilledWithData = {};
 
     // Fill schemaFilledWithData
-    Object.keys(schema).forEach(function (key, value) {
-       schemaFilledWithData[value] = data[key];
+    Object.keys(schema).forEach(function (key) {
+       schemaFilledWithData[key] = data[schema[key]];
     });
 
     // Check if row exists
-//    var recordExists = {};
-//    db.select()
-//        .from('CloudService')
-//        .where({ id: schemaFilledWithData.id })
-//        .one()
-//        .then(function (record) {
-//           recordExists[service] = record;
-//        });
-//    // insert if it does not exist
-//    if (_.isUndefined(recordExists)) {
-        db.insert()
-            .into('CloudService')
-            .set(schemaFilledWithData)
-            .one()
-            .then(function () {
-                return true;
-            })
-            .error(function () {
+    var recordId = schemaFilledWithData.serviceId;
+    db.select('count(*)')
+        .from('CloudService')
+        .where({ serviceId: recordId })
+        .scalar()
+        .then(function (total) {
+            // insert if it does not exist
+            if (total === 0) {
+                db.insert()
+                    .into('CloudService')
+                    .set(schemaFilledWithData)
+                    .one()
+                    .then(function (cloudService) {
+                        workerlog.info('created entry for cloudService: ' + cloudService.serviceId);
+                        return true;
+                    })
+                    .error(function (cloudService) {
+                        workerlog.error('problem with creating cloud service: ' + cloudService.toString());
+                        return false;
+                    });
                 return false;
-            });
-//        return false;
-//    } else {
-//        // update if exist
-//        var recordId = schemaFilledWithData.id;
-//        delete schemaFilledWithData.id;
-//        db.update('CloudService')
-//            .set(schemaFilledWithData)
-//            .where({ id: recordId })
-//            .scalar()
-//            .then(function () {
-//                return true;
-//            })
-//            .error(function () {
-//                return false;
-//            });
-//        return false;
-//    }
+            } else {
+                // update if exist
+                delete schemaFilledWithData.serviceId;
+                db.update('CloudService')
+                    .set(schemaFilledWithData)
+                    .where({ id: recordId })
+                    .scalar()
+                    .then(function (total) {
+                        workerlog.info('updated entry for cloudService: ' + total);
+                        return true;
+                    })
+                    .error(function (cloudService) {
+                        workerlog.error('problem updating cloudService with data: ' + cloudService.toString());
+                        return false;
+                    });
+                return false;
+            }
+        });
 };
 
 methods.runServicesUpdate = function () {
@@ -149,10 +151,9 @@ methods.runServicesUpdate = function () {
             httpRequest(url, function (err, res, body){
                 body = JSON.parse(body);
                if (_.isObject(body))  {
-                    workerlog.info('writing data for: ' + serviceDataParser.name);
                     Object.keys(body[serviceFileData.dataObject]).forEach(function (service) {
                        serviceDataParser.insertOrUpdateCloudService(body[serviceFileData.dataObject][service], serviceFileData.schema);
-                       offset += serviceFileData.offsetInterval;
+                       offset += serviceFileData[offsetInterval];
                     });
                } else {
                    workerlog.error('data for feed: ' + DataParser.name + ' not fetched');
@@ -180,6 +181,7 @@ setInterval(function () {
 //            isNotRunning = true;
 //        });
         methods.runServicesUpdate();
+        isNotRunning = true;
     }
 }, config.worker.interval);
 
