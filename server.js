@@ -14,6 +14,13 @@ app.use(express.urlencoded());
 app.use(express.methodOverride());
 app.use(app.router);
 
+// enable CORS
+app.all('/*', function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "X-Requested-With");
+    next();
+});
+
 // Database config
 var server = Oriento({
     host: config.database.host,
